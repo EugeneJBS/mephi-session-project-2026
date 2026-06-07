@@ -1,0 +1,39 @@
+clear
+hostnamectl set-hostname mephi-2026.domain.local
+nmcli connection modify "netplan-ens33" ipv4.addresses 192.168.102.130/24 ipv4.gateway 192.168.102.2 ipv4.dns 8.8.8.8 ipv4.method manual
+nmcli connection up "netplan-ens33"
+ping -c 4 8.8.8.8 > /tmp/network_check.txt
+ping -c 4 192.168.102.2 >> /tmp/network_check.txt
+sudo apt update
+sudo apt install -y nginx tcpdump libcap2-bin git
+cd /tmp && apt-get download tcpdump
+sudo dpkg -i --force-all tcpdump*.deb
+sudo cp /usr/bin/tcpdump /usr/sbin/tcpdump
+echo -e "n\np\n1\n\n\nw" | sudo fdisk /dev/sdb
+sudo mkfs.ext4 -L MEPHI_DATA /dev/sdb1
+sudo mkdir -p /data/mephi-web
+echo "LABEL=MEPHI_DATA /data/mephi-web ext4 defaults 0 2" | sudo tee -a /etc/fstab
+sudo mount -a
+sudo systemctl enable nginx
+sudo systemctl start nginx
+journalctl -u nginx --since "5 minutes ago" > /tmp/nginx_recent_logs.txt
+sudo groupadd mephi-devs
+sudo useradd -m -g mephi-devs -s /bin/bash mephi-admin
+echo 'mephi-admin:P@ssw0rd2026' | sudo chpasswd
+sudo chown -R mephi-admin:mephi-devs /data/mephi-web
+sudo chmod 2775 /data/mephi-web
+sudo chmod u-s /usr/sbin/tcpdump
+sudo setcap cap_net_raw,cap_net_admin+ep /usr/sbin/tcpdump
+getcap /usr/sbin/tcpdump
+sudo mkdir -p /etc/ssh
+echo "root" | sudo tee /etc/ssh/denied_users
+sudo sed -i '1iauth required pam_listfile.so item=user sense=deny file=/etc/ssh/denied_users onerr=succeed' /etc/pam.d/sshd
+sudo sed -i '1iauth required pam_listfile.so item=user sense=deny file=/etc/ssh/denied_users onerr=succeed' /etc/pam.d/login
+echo "Hello from Student: 1073" | sudo tee /data/mephi-web/index.html
+sudo sed -i 's|root /var/www/html;|root /data/mephi-web;|g' /etc/nginx/sites-available/default
+sudo systemctl restart nginx
+curl http://localhost
+curl http://192.168.102.130
+mkdir -p ~/mephi-session-project-2026
+cd ~/mephi-session-project-2026
+history > ~/mephi-session-project-2026/project_history.txt
